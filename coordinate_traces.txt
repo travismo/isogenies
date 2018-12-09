@@ -1,0 +1,183 @@
+def new_generalized_Schoof(chain):
+    """ Returns the trace of the endomorphism represented by chain.
+    """
+    p = chain[0].domain().base_field().characteristic()
+    ell = chain[0].degree()
+    e = len(chain)
+    N = 3
+    moduli = [3]
+    traces = []
+    q = 3
+    while N < 2*sqrt(float(ell^e)):
+        q = next_prime(q);
+        if q == p:
+            continue
+        else:
+            N = N*q
+            moduli.append(q)
+    for M in moduli:
+        if M == ell:
+            coordinate_moduli = [phi.domain().division_polynomial(M).quo_rem(phi.kernel_polynomial())[0] for phi in chain]
+            traces.append(trace_mod_M(chain,M,coordinate_moduli))
+        else:
+            coordinate_moduli = [phi.domain().division_polynomial(M) for phi in chain]
+            traces.append(trace_mod_M(chain,M,coordinate_moduli))
+    trace = generalCRT(traces,moduli)
+    if trace > N/2:
+        return trace - N, traces, moduli
+    else:
+        return trace, traces, moduli
+def trace_mod_M(chain,M,coordinate_moduli):
+    """Computes the trace of chain mod M.
+    """
+    x,y = var('x,y')
+    ell = chain[0].degree()
+    e = len(chain)
+    h = coordinate_moduli[0]
+    R = QuotientRing(h.parent(),h)
+    alpha = compose_and_reduce_chain(chain,M,coordinate_moduli)
+    alpha_squared = endo_multiply(alpha,alpha)
+    if M == ell:
+        alpha_squared_plus_deg_id = alpha_squared
+        for t in range(1,M/2+1):
+            talpha = endo_scale(alpha,t,chain,coordinate_moduli)
+            if alpha_squared_plus_deg_id[0] == talpha[0]:
+                if alpha_squared_plus_deg_id[1] == talpha[1]:
+                    return t
+                else:
+                    return -t
+        return 0
+    else:
+        degree_mod_M = (ell^e) % M
+        degree_times_identity = endo_scale((R(x),R(1)),degree_mod_M,chain,coordinate_moduli)
+        if alpha_squared[0] != degree_times_identity[0]:
+            alpha_squared_plus_deg_id = endo_add(alpha_squared,degree_times_identity,coordinate_moduli,chain)
+            for t in range(1,M/2+1):
+                talpha = endo_scale(alpha,t,chain,coordinate_moduli)
+                #print t
+                #print alpha_squared_plus_deg_id[0] - talpha[0]
+                if alpha_squared_plus_deg_id[0] == talpha[0]:
+                    if alpha_squared_plus_deg_id[1] == talpha[1]:
+                        return t
+                    else:
+                        return -t
+                else:
+                    continue
+        elif kronecker(degree_mod_M,M) == 1:
+            w = ZZ(mod(degree_mod_M,M).sqrt())
+            walpha = endo_scale(alpha,w,chain,coordinate_moduli)
+            if walpha[0] == alpha_squared[0]:
+                if walpha[1] == alpha_squared[1]:
+                    return 2*w
+                else:
+                    return -2*w
+            else:
+                return 0
+        else: 
+            return 0
+
+
+def compose_and_reduce_chain(chain,M,coordinate_moduli):
+    """Returns the endomorphism of E[m] represented by chain.
+    """
+    x,y = var('x,y')
+    h = coordinate_moduli[0]
+    R = QuotientRing(h.parent(),h)
+    alpha0 = R(x)
+    alpha1 = R(1)
+    for k in range(len(chain)):
+        phi = chain[k]
+        tempModulus = coordinate_moduli[k]
+        tempR = QuotientRing(tempModulus.parent(),tempModulus)
+        phix,phiy = phi.rational_maps()
+        phiy = phiy/(phiy.parent()(y))
+        phixNum, phixDenom = phix.numerator(), phix.denominator()
+        phiyNum, phiyDenom = phiy.numerator(), phiy.denominator()
+        if tempR(phixDenom).is_unit():
+            if tempR(phiyDenom).is_unit():
+                phix = tempR(phixNum)*(tempR(phixDenom))^(-1)
+                phiy = tempR(phiyNum)*(tempR(phiyDenom))^(-1)
+            else:
+                print 'y denom not a unit!'
+                coordinate_moduli[k] = gcd(phiyDenom,tempModulus)
+                compose_and_reduce_chain(chain,M,coordinate_moduli)
+        else:
+            print 'x denom not a unit!'
+            coordinate_moduli[k] = gcd(phixDenom,tempModulus)
+            compose_and_reduce_chain(chain,M,coordinate_moduli)
+        alpha0 = R(phix.lift()(alpha0.lift()))
+        alpha1 = R(phiy.lift()(alpha0.lift()))*alpha1
+    return alpha0,alpha1
+
+def endo_scale(alpha,m,chain,coordinate_moduli):
+    """Scales alpha by m.
+    """
+    E = chain[0].domain()
+    R = alpha[0].parent()
+    if m == 2:
+        A = E.a_invariants()[3]
+        B = E.a_invariants()[4]
+        f = R(x^3)+A*R(x)+B
+        if alpha[1].is_unit():
+            r = (R(3)*alpha[0]^2 + R(A))*(R(2)*alpha[1]*f)^(-1)
+            malpha0 = r^2*f - 2*alpha[0]
+            malpha1 = r*(alpha[0] - malpha0) - alpha[1]
+            return malpha0,malpha1
+        else:
+            print 'scaling resulted in noninvertible denominator!'
+            coordinate_moduli[0] = gcd(coordinate_moduli[0],alpha[1].lift())
+            trace_mod_M(chain,M,coordinate_moduli)
+    else:
+        digits = ZZ(m).digits(2)
+        malpha = 'zero endo'
+        for k in digits:
+            if k == 1:
+                malpha = endo_add(malpha,alpha,coordinate_moduli,chain)
+            alpha = endo_scale(alpha,2,chain,coordinate_moduli)
+    return malpha
+
+def endo_multiply(alpha,beta):
+    """Returns product alpha*beta.
+    """
+    R = alpha[0].parent()
+    return R(alpha[0].lift()(beta[0].lift())), R(alpha[1].lift()(beta[0].lift()))*beta[1]
+
+def endo_add(alpha,beta,coordinate_moduli,chain):
+    """Returns the sum of alpha and beta.
+    """
+    if alpha == 'zero endo':
+        return beta
+    elif  beta == 'zero endo':
+        return alpha
+    else:
+        R = alpha[0].parent()
+        if alpha[0] != beta[0]:
+            u = alpha[1] - beta[1]
+            v = alpha[0] - beta[0]
+            if v.is_unit():
+                E = chain[0].domain()
+                A = E.a_invariants()[3]
+                B = E.a_invariants()[4]
+                f = R(x^3) + A*R(x) + B
+                r = u*v^(-1)
+                gamma0 = r^2*f - alpha[0] - beta[0]
+                gamma1 = r*(alpha[0] - gamma0) - alpha[1]
+                return gamma0,gamma1
+            else:
+                print 'v is not a unit!'
+                coordinate_moduli[0] = gcd(coordinate_moduli[0],v.lift())
+                trace_mod_M(chain,M,coordinate_moduli)
+        else:
+            if alpha[1].is_unit():
+                E = chain[0].domain()
+                A = E.a_invariants()[3]
+                B = E.a_invariants()[4]
+                f = R(x^3) + A*R(x) + B
+                r = (R(3)*alpha[0]^2+A)*(R(2)*f*alpha[1])^(-1)
+                gamma0 = r^2*f - alpha[0] - beta[0]
+                gamma1 = r*(alpha[0] - gamma0) - alpha[1]
+                return gamma0,gamma1
+            else:
+                print 'alpha[1] is not a unit!'
+                coordinate_moduli[0] = gcd(coordinate_moduli[0],alpha[1].lift())
+                trace_mod_M(chain,M,coordinate_moduli)
