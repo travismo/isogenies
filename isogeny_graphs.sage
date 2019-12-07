@@ -17,7 +17,7 @@ def isogeny_graph(p,ell):
 
     F = GF(p^2)
     if not p.is_prime() and ell.is_prime():
-        raise ValueError, 'inputs must be primes'
+        raise ValueError('inputs must be primes')
     elif p%12 == 7:
         E = EllipticCurve([F(1),F(0)])
         j = E.j_invariant()
@@ -98,7 +98,7 @@ def find_neighbors(E,ell):
         factors = E.division_polynomial(ell).factor()
         factors = [div[0] for div in factors]
         kernel_polys = []
-        while len(factors)>0:
+        while factors:
             div = factors.pop(0)
             if div.degree() == (ell-1)/2:
                 kernel_polys.append(div)
@@ -235,7 +235,7 @@ def trace_mod_prime(M, chain):
 
     E = chain[0].domain()
     if chain[len(chain)-1].codomain() != E:
-        raise ValueError, 'Chain does not represent an endomorphism'
+        raise ValueError('Chain does not represent an endomorphism')
     degree = 1
     for phi in chain:
         degree = degree*phi.degree()
@@ -309,7 +309,7 @@ def find_y_coordinate(E,xP):
     G = y^2 +(a1*xP+a3)*y-xP^3-a2*xP^2-a4*xP-a6
     factor = G.factor()[0][0]
     if factor.degree()>1:
-        raise ValueError, 'Point is not defined over ',E.base_field()
+        raise ValueError('Point is not defined over %s' % E.base_field())
     else:
         return -factor[0]
 
@@ -378,7 +378,7 @@ def isogeny_graph(p,ell):
 
     F = GF(p^2)
     if not p.is_prime() and ell.is_prime():
-        raise ValueError, 'inputs must be primes'
+        raise ValueError('inputs must be primes')
     elif p%12 == 7:
         E = EllipticCurve([F(1),F(0)])
         j = E.j_invariant()
@@ -595,7 +595,7 @@ def trace_mod_prime(M, chain):
 
     E = chain[0].domain()
     if chain[len(chain)-1].codomain() != E:
-        raise ValueError, 'Chain does not represent an endomorphism'
+        raise ValueError('Chain does not represent an endomorphism')
     degree = 1
     for phi in chain:
         degree = degree*phi.degree()
@@ -669,7 +669,7 @@ def find_y_coordinate(E,xP):
     G = y^2 +(a1*xP+a3)*y-xP^3-a2*xP^2-a4*xP-a6
     factor = G.factor()[0][0]
     if factor.degree()>1:
-        raise ValueError, 'Point is not defined over ',E.base_field()
+        raise ValueError('Point is not defined over %s' % E.base_field())
     else:
         return -factor[0]
 
